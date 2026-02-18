@@ -24,6 +24,10 @@ codeops:
     refresh-expiration-days: 30
   vault:
     master-key: test-vault-master-key-minimum-32-characters-for-aes256-testing
+    seal:
+      auto-unseal: true
+      total-shares: 5
+      threshold: 3
     dynamic-secrets:
       execute-sql: false
       default-ttl-seconds: 3600
