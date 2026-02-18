@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: codeops-vault
+  profiles:
+    active: dev
+
+server:
+  port: 8097

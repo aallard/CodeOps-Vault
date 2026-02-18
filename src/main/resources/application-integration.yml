@@ -1,0 +1,30 @@
+spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    open-in-view: false
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+
+codeops:
+  jwt:
+    secret: integration-test-secret-key-minimum-32-characters-long
+    expiration-hours: 24
+    refresh-expiration-days: 30
+  vault:
+    master-key: integration-vault-master-key-minimum-32-characters-for-aes256
+  cors:
+    allowed-origins: http://localhost:3000
+  services:
+    server-url: http://localhost:8095
+    registry-url: http://localhost:8096
+    logger-url: http://localhost:8098
+
+logging:
+  level:
+    com.codeops.vault: WARN
