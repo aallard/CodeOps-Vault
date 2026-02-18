@@ -6,6 +6,7 @@ import com.codeops.vault.config.VaultProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Main entry point for the CodeOps Vault service.
@@ -14,6 +15,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
  * storage and retrieval of sensitive configuration values, credentials, and API keys.</p>
  */
 @SpringBootApplication
+@EnableScheduling
 @EnableConfigurationProperties({JwtProperties.class, ServiceUrlProperties.class, VaultProperties.class})
 public class CodeOpsVaultApplication {
 
