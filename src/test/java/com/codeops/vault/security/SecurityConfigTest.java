@@ -63,10 +63,11 @@ class SecurityConfigTest {
     @Test
     void protectedEndpoint_validToken_passesSecurityFilter() throws Exception {
         String token = buildValidToken();
-        // Endpoint doesn't exist yet (404), but it passes the security filter (not 401)
+        // Token with MEMBER role passes the JWT filter (not 401) but is denied
+        // by @PreAuthorize("hasRole('ADMIN')") on SecretController (403)
         mockMvc.perform(get("/api/v1/vault/secrets")
                         .header("Authorization", "Bearer " + token))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isForbidden());
     }
 
     @Test
