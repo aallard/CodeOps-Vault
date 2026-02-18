@@ -64,6 +64,7 @@ public class PolicyService {
     private final AccessPolicyRepository policyRepository;
     private final PolicyBindingRepository bindingRepository;
     private final PolicyMapper policyMapper;
+    private final AuditService auditService;
 
     // ─── Policy CRUD ────────────────────────────────────────
 
@@ -95,6 +96,10 @@ public class PolicyService {
 
         policy = policyRepository.save(policy);
         log.info("Created policy '{}' for team {}", request.name(), teamId);
+
+        try { auditService.logSuccess(teamId, userId, "POLICY_CREATE", request.pathPattern(), "POLICY", policy.getId(), null); }
+        catch (Exception e) { log.warn("Audit log failed for createPolicy: {}", e.getMessage()); }
+
         return policyMapper.toResponse(policy, 0);
     }
 
@@ -177,6 +182,10 @@ public class PolicyService {
         policy = policyRepository.save(policy);
         int bindingCount = (int) bindingRepository.countByPolicyId(policyId);
         log.info("Updated policy '{}'", policy.getName());
+
+        try { auditService.logSuccess(policy.getTeamId(), null, "POLICY_UPDATE", policy.getPathPattern(), "POLICY", policyId, null); }
+        catch (Exception e) { log.warn("Audit log failed for updatePolicy: {}", e.getMessage()); }
+
         return policyMapper.toResponse(policy, bindingCount);
     }
 
@@ -194,6 +203,9 @@ public class PolicyService {
         bindingRepository.deleteByPolicyId(policyId);
         policyRepository.deleteById(policyId);
         log.info("Deleted policy {} and all bindings", policyId);
+
+        try { auditService.logSuccess(null, null, "POLICY_DELETE", null, "POLICY", policyId, null); }
+        catch (Exception e) { log.warn("Audit log failed for deletePolicy: {}", e.getMessage()); }
     }
 
     // ─── Binding CRUD ───────────────────────────────────────
@@ -227,6 +239,10 @@ public class PolicyService {
         binding = bindingRepository.save(binding);
         log.info("Created binding for policy '{}' ({} -> {})",
                 policy.getName(), request.bindingType(), request.bindingTargetId());
+
+        try { auditService.logSuccess(policy.getTeamId(), userId, "BIND", policy.getPathPattern(), "POLICY_BINDING", binding.getId(), null); }
+        catch (Exception e) { log.warn("Audit log failed for createBinding: {}", e.getMessage()); }
+
         return policyMapper.toBindingResponse(binding, policy.getName());
     }
 
@@ -278,6 +294,9 @@ public class PolicyService {
         }
         bindingRepository.deleteById(bindingId);
         log.info("Deleted binding {}", bindingId);
+
+        try { auditService.logSuccess(null, null, "UNBIND", null, "POLICY_BINDING", bindingId, null); }
+        catch (Exception e) { log.warn("Audit log failed for deleteBinding: {}", e.getMessage()); }
     }
 
     // ─── Access Evaluation ──────────────────────────────────

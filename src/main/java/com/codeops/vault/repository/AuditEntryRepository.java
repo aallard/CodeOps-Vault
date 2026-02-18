@@ -104,4 +104,12 @@ public interface AuditEntryRepository extends JpaRepository<AuditEntry, Long> {
      * @return count of matching entries
      */
     long countByTeamIdAndOperation(UUID teamId, String operation);
+
+    /**
+     * Counts failed audit entries for a team.
+     *
+     * @param teamId the team ID
+     * @return count of failed entries
+     */
+    long countByTeamIdAndSuccessFalse(UUID teamId);
 }

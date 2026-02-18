@@ -64,6 +64,7 @@ public class SecretService {
     private final SecretMetadataRepository secretMetadataRepository;
     private final EncryptionService encryptionService;
     private final SecretMapper secretMapper;
+    private final AuditService auditService;
 
     // ─── Create ─────────────────────────────────────────────
 
@@ -128,6 +129,10 @@ public class SecretService {
         Map<String, String> metadataMap = saveMetadata(secret, request.metadata());
 
         log.info("Created secret '{}' at path '{}' for team {}", request.name(), request.path(), teamId);
+
+        try { auditService.logSuccess(teamId, userId, "WRITE", request.path(), "SECRET", secret.getId(), null); }
+        catch (Exception e) { log.warn("Audit log failed for createSecret: {}", e.getMessage()); }
+
         return secretMapper.toResponse(secret, metadataMap);
     }
 
@@ -188,6 +193,10 @@ public class SecretService {
         secretRepository.save(secret);
 
         log.debug("Read secret value for secret {} (version {})", secretId, version.getVersionNumber());
+
+        try { auditService.logSuccess(secret.getTeamId(), null, "READ", secret.getPath(), "SECRET", secretId, null); }
+        catch (Exception e) { log.warn("Audit log failed for readSecretValue: {}", e.getMessage()); }
+
         return new SecretValueResponse(
                 secret.getId(), secret.getPath(), secret.getName(),
                 version.getVersionNumber(), decryptedValue, version.getCreatedAt());
@@ -223,6 +232,10 @@ public class SecretService {
         secretRepository.save(secret);
 
         log.debug("Read secret version {} for secret {}", versionNumber, secretId);
+
+        try { auditService.logSuccess(secret.getTeamId(), null, "READ", secret.getPath(), "SECRET", secretId, null); }
+        catch (Exception e) { log.warn("Audit log failed for readSecretVersionValue: {}", e.getMessage()); }
+
         return new SecretValueResponse(
                 secret.getId(), secret.getPath(), secret.getName(),
                 version.getVersionNumber(), decryptedValue, version.getCreatedAt());
@@ -380,6 +393,10 @@ public class SecretService {
         }
 
         Map<String, String> metadata = buildMetadataMap(secretId);
+
+        try { auditService.logSuccess(secret.getTeamId(), userId, "WRITE", secret.getPath(), "SECRET", secretId, null); }
+        catch (Exception e) { log.warn("Audit log failed for updateSecret: {}", e.getMessage()); }
+
         return secretMapper.toResponse(secret, metadata);
     }
 
@@ -400,6 +417,9 @@ public class SecretService {
         secret.setIsActive(false);
         secretRepository.save(secret);
         log.info("Soft-deleted secret {}", secretId);
+
+        try { auditService.logSuccess(secret.getTeamId(), null, "DELETE", secret.getPath(), "SECRET", secretId, null); }
+        catch (Exception e) { log.warn("Audit log failed for softDeleteSecret: {}", e.getMessage()); }
     }
 
     /**
@@ -414,9 +434,14 @@ public class SecretService {
     @Transactional
     public void hardDeleteSecret(UUID secretId) {
         Secret secret = findSecretById(secretId);
+        UUID teamId = secret.getTeamId();
+        String path = secret.getPath();
         secretMetadataRepository.deleteBySecretId(secretId);
         secretRepository.delete(secret);
         log.info("Hard-deleted secret {}", secretId);
+
+        try { auditService.logSuccess(teamId, null, "DELETE", path, "SECRET", secretId, null); }
+        catch (Exception e) { log.warn("Audit log failed for hardDeleteSecret: {}", e.getMessage()); }
     }
 
     // ─── Version Management ─────────────────────────────────
@@ -486,6 +511,9 @@ public class SecretService {
 
         destroyVersionRecord(version);
         log.info("Destroyed version {} of secret {}", versionNumber, secretId);
+
+        try { auditService.logSuccess(secret.getTeamId(), null, "DELETE", secret.getPath(), "SECRET", secretId, null); }
+        catch (Exception e) { log.warn("Audit log failed for destroyVersion: {}", e.getMessage()); }
     }
 
     /**

@@ -48,6 +48,7 @@ import java.util.Map;
 public class SealService {
 
     private final VaultProperties vaultProperties;
+    private final AuditService auditService;
 
     /** Current seal status — volatile for visibility across threads. */
     private volatile SealStatus status = SealStatus.SEALED;
@@ -133,12 +134,14 @@ public class SealService {
     }
 
     /**
-     * Creates a new SealService with the given Vault properties.
+     * Creates a new SealService with the given Vault properties and audit service.
      *
      * @param vaultProperties Configuration containing the master key.
+     * @param auditService    Audit logging service (nullable for testing).
      */
-    public SealService(VaultProperties vaultProperties) {
+    public SealService(VaultProperties vaultProperties, AuditService auditService) {
         this.vaultProperties = vaultProperties;
+        this.auditService = auditService;
     }
 
     /**
@@ -219,6 +222,9 @@ public class SealService {
         this.sealedAt = Instant.now();
         this.unsealedAt = null;
         log.info("Vault sealed");
+
+        try { if (auditService != null) auditService.logSuccess(null, null, "SEAL", null, "VAULT", null, null); }
+        catch (Exception e) { log.warn("Audit log failed for seal: {}", e.getMessage()); }
     }
 
     // ─── Unseal Operation ───────────────────────────────────
@@ -281,6 +287,9 @@ public class SealService {
             collectedShares.clear();
             collectedShareIndices.clear();
             log.info("Vault unsealed successfully with {} key shares", threshold);
+
+            try { if (auditService != null) auditService.logSuccess(null, null, "UNSEAL", null, "VAULT", null, null); }
+            catch (Exception ex) { log.warn("Audit log failed for unseal: {}", ex.getMessage()); }
         }
 
         return getStatus();
@@ -420,6 +429,10 @@ public class SealService {
         }
 
         log.info("Generated {} key shares with threshold {}", totalShares, threshold);
+
+        try { if (auditService != null) auditService.logSuccess(null, null, "WRITE", null, "VAULT_SHARES", null, null); }
+        catch (Exception e) { log.warn("Audit log failed for generateKeyShares: {}", e.getMessage()); }
+
         return encodedShares;
     }
 

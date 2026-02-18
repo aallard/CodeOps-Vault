@@ -60,6 +60,9 @@ class TransitServiceTest {
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
 
+    @Mock
+    private AuditService auditService;
+
     @InjectMocks
     private TransitService transitService;
 

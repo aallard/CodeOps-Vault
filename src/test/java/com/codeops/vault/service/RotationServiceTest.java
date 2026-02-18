@@ -75,6 +75,9 @@ class RotationServiceTest {
     @Mock
     private RestTemplate restTemplate;
 
+    @Mock
+    private AuditService auditService;
+
     @InjectMocks
     private RotationService rotationService;
 

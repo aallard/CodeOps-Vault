@@ -39,7 +39,7 @@ class SealServiceTest {
      * Creates a SealService with auto-unseal enabled and initializes it.
      */
     private SealService createAutoUnsealService() {
-        SealService service = new SealService(vaultProperties);
+        SealService service = new SealService(vaultProperties, null);
         setField(service, "autoUnseal", true);
         setField(service, "configuredTotalShares", 5);
         setField(service, "configuredThreshold", 3);
@@ -51,7 +51,7 @@ class SealServiceTest {
      * Creates a SealService with auto-unseal disabled (manual mode).
      */
     private SealService createManualSealService() {
-        SealService service = new SealService(vaultProperties);
+        SealService service = new SealService(vaultProperties, null);
         setField(service, "autoUnseal", false);
         setField(service, "configuredTotalShares", 5);
         setField(service, "configuredThreshold", 3);
@@ -432,7 +432,7 @@ class SealServiceTest {
         String[] shares = setupService.generateKeyShares();
 
         // Create a new service with auto-unseal OFF
-        SealService service = new SealService(vaultProperties);
+        SealService service = new SealService(vaultProperties, null);
         setField(service, "autoUnseal", false);
         setField(service, "configuredTotalShares", 5);
         setField(service, "configuredThreshold", 3);

@@ -72,6 +72,7 @@ public class DynamicSecretService {
     private final EncryptionService encryptionService;
     private final LeaseMapper leaseMapper;
     private final DynamicSecretProperties dynamicSecretProperties;
+    private final AuditService auditService;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final int MAX_USERNAME_LENGTH = 63;
@@ -173,6 +174,9 @@ public class DynamicSecretService {
         log.info("Created dynamic lease {} for secret {} (backend: {}, TTL: {}s, user: {})",
                 leaseId, request.secretId(), backendType, request.ttlSeconds(), username);
 
+        try { auditService.logSuccess(secret.getTeamId(), userId, "LEASE_CREATE", secret.getPath(), "DYNAMIC_LEASE", lease.getId(), null); }
+        catch (Exception e) { log.warn("Audit log failed for createLease: {}", e.getMessage()); }
+
         // Return response with connection details (only time they're exposed)
         return leaseMapper.toResponse(lease, credentialsMap);
     }
@@ -237,6 +241,9 @@ public class DynamicSecretService {
         leaseRepository.save(lease);
 
         log.info("Revoked lease {} (secret: {})", leaseId, lease.getSecretId());
+
+        try { auditService.logSuccess(null, userId, "LEASE_REVOKE", lease.getSecretPath(), "DYNAMIC_LEASE", lease.getId(), null); }
+        catch (Exception e) { log.warn("Audit log failed for revokeLease: {}", e.getMessage()); }
     }
 
     /**

@@ -62,6 +62,9 @@ class DynamicSecretServiceTest {
     @Mock
     private DynamicSecretProperties dynamicSecretProperties;
 
+    @Mock
+    private AuditService auditService;
+
     @InjectMocks
     private DynamicSecretService dynamicSecretService;
 

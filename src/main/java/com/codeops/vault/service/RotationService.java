@@ -66,6 +66,7 @@ public class RotationService {
     private final EncryptionService encryptionService;
     private final RotationMapper rotationMapper;
     private final RestTemplate restTemplate;
+    private final AuditService auditService;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -106,6 +107,10 @@ public class RotationService {
         policy = rotationPolicyRepository.save(policy);
 
         log.info("Created/updated rotation policy for secret {} with strategy {}", request.secretId(), request.strategy());
+
+        try { auditService.logSuccess(secret.getTeamId(), userId, "POLICY_CREATE", secret.getPath(), "ROTATION_POLICY", policy.getId(), null); }
+        catch (Exception e) { log.warn("Audit log failed for createOrUpdatePolicy: {}", e.getMessage()); }
+
         return rotationMapper.toResponse(policy, secret.getPath());
     }
 
@@ -259,6 +264,9 @@ public class RotationService {
 
             log.info("Successfully rotated secret {} from version {} to {}",
                     secretId, previousVersion, updatedSecret.getCurrentVersion());
+
+            try { auditService.logSuccess(secret.getTeamId(), userId, "ROTATE", secret.getPath(), "SECRET", secretId, null); }
+            catch (Exception ex) { log.warn("Audit log failed for rotateSecret: {}", ex.getMessage()); }
 
             return rotationMapper.toHistoryResponse(history);
 

@@ -59,6 +59,9 @@ class PolicyServiceTest {
     @Mock
     private PolicyMapper policyMapper;
 
+    @Mock
+    private AuditService auditService;
+
     @InjectMocks
     private PolicyService policyService;
 

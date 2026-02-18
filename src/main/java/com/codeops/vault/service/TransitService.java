@@ -59,6 +59,7 @@ public class TransitService {
     private final EncryptionService encryptionService;
     private final TransitKeyMapper transitKeyMapper;
     private final ObjectMapper objectMapper;
+    private final AuditService auditService;
 
     private static final String DEFAULT_ALGORITHM = "AES-256-GCM";
 
@@ -110,6 +111,10 @@ public class TransitService {
         transitKey = transitKeyRepository.save(transitKey);
 
         log.info("Created transit key '{}' for team {} (algorithm: {})", request.name(), teamId, algorithm);
+
+        try { auditService.logSuccess(teamId, userId, "WRITE", request.name(), "TRANSIT_KEY", transitKey.getId(), null); }
+        catch (Exception e) { log.warn("Audit log failed for createKey: {}", e.getMessage()); }
+
         return transitKeyMapper.toResponse(transitKey);
     }
 
@@ -238,6 +243,10 @@ public class TransitService {
         key = transitKeyRepository.save(key);
 
         log.info("Rotated transit key {} to version {}", keyId, newVersion);
+
+        try { auditService.logSuccess(key.getTeamId(), null, "ROTATE", key.getName(), "TRANSIT_KEY", keyId, null); }
+        catch (Exception e) { log.warn("Audit log failed for rotateKey: {}", e.getMessage()); }
+
         return transitKeyMapper.toResponse(key);
     }
 
@@ -258,8 +267,13 @@ public class TransitService {
             throw new ValidationException("Transit key is not deletable. Set isDeletable=true before deleting.");
         }
 
+        UUID teamId = key.getTeamId();
+        String keyName = key.getName();
         transitKeyRepository.delete(key);
-        log.info("Deleted transit key {} ('{}')", keyId, key.getName());
+        log.info("Deleted transit key {} ('{}')", keyId, keyName);
+
+        try { auditService.logSuccess(teamId, null, "DELETE", keyName, "TRANSIT_KEY", keyId, null); }
+        catch (Exception e) { log.warn("Audit log failed for deleteKey: {}", e.getMessage()); }
     }
 
     // ─── Encrypt / Decrypt Operations ───────────────────────
@@ -281,6 +295,10 @@ public class TransitService {
         String ciphertext = encryptionService.encryptWithKey(request.plaintext(), keyId, currentKeyBytes);
 
         log.debug("Encrypted data with transit key '{}' version {}", request.keyName(), key.getCurrentVersion());
+
+        try { auditService.logSuccess(teamId, null, "TRANSIT_ENCRYPT", request.keyName(), "TRANSIT_KEY", key.getId(), null); }
+        catch (Exception e) { log.warn("Audit log failed for encrypt: {}", e.getMessage()); }
+
         return new TransitEncryptResponse(request.keyName(), key.getCurrentVersion(), ciphertext);
     }
 
@@ -311,6 +329,10 @@ public class TransitService {
         String plaintext = encryptionService.decryptWithKey(request.ciphertext(), keyBytes);
 
         log.debug("Decrypted data with transit key '{}' version {}", request.keyName(), versionNumber);
+
+        try { auditService.logSuccess(teamId, null, "TRANSIT_DECRYPT", request.keyName(), "TRANSIT_KEY", key.getId(), null); }
+        catch (Exception e) { log.warn("Audit log failed for decrypt: {}", e.getMessage()); }
+
         return new TransitDecryptResponse(request.keyName(), plaintext);
     }
 

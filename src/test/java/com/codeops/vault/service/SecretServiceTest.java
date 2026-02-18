@@ -68,6 +68,9 @@ class SecretServiceTest {
     @Mock
     private SecretMapper secretMapper;
 
+    @Mock
+    private AuditService auditService;
+
     @InjectMocks
     private SecretService secretService;
 
