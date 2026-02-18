@@ -1,5 +1,6 @@
 package com.codeops.vault;
 
+import com.codeops.vault.config.DynamicSecretProperties;
 import com.codeops.vault.config.JwtProperties;
 import com.codeops.vault.config.ServiceUrlProperties;
 import com.codeops.vault.config.VaultProperties;
@@ -16,7 +17,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  */
 @SpringBootApplication
 @EnableScheduling
-@EnableConfigurationProperties({JwtProperties.class, ServiceUrlProperties.class, VaultProperties.class})
+@EnableConfigurationProperties({DynamicSecretProperties.class, JwtProperties.class, ServiceUrlProperties.class, VaultProperties.class})
 public class CodeOpsVaultApplication {
 
     /**

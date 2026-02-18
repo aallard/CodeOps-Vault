@@ -25,6 +25,11 @@ codeops:
     refresh-expiration-days: 30
   vault:
     master-key: ${VAULT_MASTER_KEY:dev-vault-master-key-minimum-32-characters-for-aes256}
+    dynamic-secrets:
+      execute-sql: false
+      default-ttl-seconds: 3600
+      max-ttl-seconds: 86400
+      password-length: 32
   cors:
     allowed-origins: http://localhost:3000,http://localhost:3200,http://localhost:5173
   services:
