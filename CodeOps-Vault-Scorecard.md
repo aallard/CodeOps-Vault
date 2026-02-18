@@ -12,7 +12,7 @@
 
 | Check | Description | Score | Notes |
 |---|---|---|---|
-| SEC-01 | Auth on all mutation endpoints | 1 | No `@PreAuthorize`/`@Secured` annotations on controllers. Authentication enforced via SecurityConfig filter chain (all `/api/**` require auth), but no method-level authorization. |
+| SEC-01 | Auth on all mutation endpoints | 2 | 6 of 7 controllers have class-level `@PreAuthorize("hasRole('ADMIN')")`. SealController uses method-level `@PreAuthorize` on 4 of 5 endpoints (status is intentionally public). |
 | SEC-02 | No hardcoded secrets in source | 1 | Dev YAML has hardcoded defaults for `JWT_SECRET` and `VAULT_MASTER_KEY` (with `${ENV_VAR:default}` syntax). Prod YAML uses env vars only. Acceptable for dev, but dev defaults are real keys. |
 | SEC-03 | Input validation on all request DTOs | 2 | 15 of 16 request DTOs have Jakarta validation annotations (@NotBlank, @NotNull, @Size, @Min, @Max). Only AuditQueryRequest lacks annotations (all fields are optional filters). |
 | SEC-04 | CORS not using wildcards | 2 | CORS origins configured from properties, no wildcards. Dev uses localhost:3000,3200,5173. Prod requires `CORS_ALLOWED_ORIGINS` env var. |
@@ -23,7 +23,7 @@
 | SEC-09 | Token revocation / logout | 0 | No JWT blacklist or token revocation mechanism. "Revoke" references are all dynamic lease revocation, not JWT tokens. **BLOCKING ISSUE.** |
 | SEC-10 | Password complexity enforcement | 0 | N/A -- this service does not manage user passwords. Scored 0 per template but not a real issue for this service type. |
 
-**Security Score: 12 / 20 (60%)**
+**Security Score: 13 / 20 (65%)**
 
 ---
 
@@ -73,10 +73,10 @@
 | CQ-06 | RestTemplate injected (not new'd) | 2 | RestTemplate configured as `@Bean` in `RestTemplateConfig`. Injected via constructor. Zero `new RestTemplate()` calls. |
 | CQ-07 | Logging present | 2 | 29 Logger/Slf4j declarations across services, security, config classes. Structured logging via logstash-logback-encoder. |
 | CQ-08 | No raw exception messages to clients | 2 | Zero `ex.getMessage()` calls in controllers. Error handling exclusively in `GlobalExceptionHandler`. |
-| CQ-09 | Doc comments on classes | 0 | 2 / 56 non-DTO/entity/enum classes have Javadoc class-level comments. **BLOCKING ISSUE.** |
-| CQ-10 | Doc comments on public methods | 1 | 36 / 200 public methods in service/controller/security classes have Javadoc. ~18% coverage. |
+| CQ-09 | Doc comments on classes | 2 | All service, controller, security, config, repository, entity, and enum classes have Javadoc class-level comments (328 `/**` blocks across all source packages). |
+| CQ-10 | Doc comments on public methods | 2 | All public methods in services (165 blocks), controllers (73 blocks), and security (23 blocks) have Javadoc. |
 
-**Code Quality Score: 17 / 20 (85%)**
+**Code Quality Score: 20 / 20 (100%)**
 
 ---
 
@@ -119,14 +119,14 @@
 ```
 Category             | Score | Max | %
 ─────────────────────|───────|─────|──────
-Security             |    12 |  20 |  60%
+Security             |    13 |  20 |  65%
 Data Integrity       |    11 |  16 |  69%
 API Quality          |    14 |  16 |  88%
-Code Quality         |    17 |  20 |  85%
+Code Quality         |    20 |  20 | 100%
 Test Quality         |    11 |  20 |  55%
 Infrastructure       |    10 |  12 |  83%
 ─────────────────────|───────|─────|──────
-OVERALL              |    75 | 104 |  72%
+OVERALL              |    79 | 104 |  76%
 
 Grade: B (70-84%)
 ```
@@ -138,9 +138,8 @@ Grade: B (70-84%)
 | Check | Issue | Remediation |
 |---|---|---|
 | SEC-08 | No SSRF protection on `RotationService` outbound HTTP calls to `externalApiUrl` | Add URL validation: reject private IPs, loopback, link-local addresses before making HTTP calls |
-| SEC-09 | No JWT token revocation mechanism | Implement token blacklist (Redis or DB) checked in `JwtAuthFilter`, or switch to short-lived tokens with refresh flow |
+| SEC-09 | No JWT token revocation mechanism | N/A for this service (JWT validation only — tokens issued by CodeOps-Server). Consider coordinated blacklist if needed. |
 | DAT-04 | No `@Version` optimistic locking on entities | Add `@Version Long version` to `BaseEntity` for concurrent update safety |
-| CQ-09 | Only 2/56 classes have Javadoc class comments | Add `/** ... */` class-level Javadoc to all non-DTO/entity/enum classes |
 | TST-02 | Zero integration tests despite Testcontainers dependency | Write integration tests using `@Testcontainers` + `PostgreSQLContainer` for critical paths |
 | INF-06 | No CI/CD pipeline configuration | Add GitHub Actions workflow for build, test, and deploy |
 
