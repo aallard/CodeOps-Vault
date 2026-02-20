@@ -1,52 +1,52 @@
 openapi: 3.0.3
 info:
-  title: CodeOps Vault API
-  description: >-
-    Secret management, encryption-as-a-service, dynamic credential leasing,
-    access policy enforcement, rotation management, seal/unseal lifecycle, and
-    audit logging for the CodeOps platform.
+  title: CodeOps-Vault API
+  description: >
+    Secret management, access policy, key rotation, dynamic secrets, transit encryption,
+    seal/unseal, and audit log service for the CodeOps platform.
   version: 1.0.0
   contact:
     name: CodeOps Team
 
 servers:
-  - url: http://localhost:8091
-    description: Local development
+  - url: http://localhost:8097
+    description: Local development server
 
 security:
-  - BearerAuth: []
+  - bearerAuth: []
 
 tags:
   - name: Health
-    description: Public health check
+    description: Service health check
   - name: Secrets
-    description: Secret lifecycle management
+    description: Secret CRUD, versioning, metadata, and search
   - name: Policies
-    description: Access policy management
+    description: Access policies, bindings, and evaluation
   - name: Rotation
-    description: Secret rotation management
-  - name: Transit
-    description: Encryption-as-a-service with named keys
+    description: Secret rotation policies and execution
   - name: Dynamic Secrets
-    description: Lease-based dynamic credential management
+    description: Dynamic secret lease management
+  - name: Transit
+    description: Transit encryption-as-a-service
   - name: Seal
-    description: Vault seal/unseal lifecycle management
+    description: Vault seal/unseal operations
   - name: Audit
-    description: Audit log querying
+    description: Audit log queries and statistics
 
 paths:
-  # ────────────────────────────────────────────────────────────────
-  # Health
-  # ────────────────────────────────────────────────────────────────
+  # ═══════════════════════════════════════════════════════════════
+  # HEALTH
+  # ═══════════════════════════════════════════════════════════════
   /health:
     get:
       tags: [Health]
-      summary: Health check (public)
+      summary: Health check
+      description: Returns service health status. Public endpoint — no authentication required.
       operationId: healthCheck
       security: []
       responses:
-        "200":
-          description: Service is up
+        '200':
+          description: Service is healthy
           content:
             application/json:
               schema:
@@ -57,14 +57,14 @@ paths:
                     example: UP
                   service:
                     type: string
-                    example: codeops-vault
+                    example: CodeOps-Vault
                   timestamp:
                     type: string
                     format: date-time
 
-  # ────────────────────────────────────────────────────────────────
-  # Secrets
-  # ────────────────────────────────────────────────────────────────
+  # ═══════════════════════════════════════════════════════════════
+  # SECRETS
+  # ═══════════════════════════════════════════════════════════════
   /api/v1/vault/secrets:
     post:
       tags: [Secrets]
@@ -75,178 +75,181 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateSecretRequest"
+              $ref: '#/components/schemas/CreateSecretRequest'
       responses:
-        "201":
+        '201':
           description: Secret created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SecretResponse"
-        "400":
+                $ref: '#/components/schemas/SecretResponse'
+        '400':
           description: Validation error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "401":
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
           description: Unauthorized
-        "403":
-          description: Forbidden — vault sealed or insufficient role
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
+        '403':
+          description: Forbidden
     get:
       tags: [Secrets]
-      summary: List secrets with optional filters
+      summary: List secrets with filtering and pagination
       operationId: listSecrets
       parameters:
         - name: type
           in: query
-          required: false
           schema:
-            $ref: "#/components/schemas/SecretType"
+            $ref: '#/components/schemas/SecretType'
         - name: pathPrefix
           in: query
-          required: false
           schema:
             type: string
         - name: activeOnly
           in: query
-          required: false
           schema:
             type: boolean
-            default: true
         - name: page
           in: query
-          required: false
           schema:
             type: integer
             format: int32
             default: 0
         - name: size
           in: query
-          required: false
           schema:
             type: integer
             format: int32
             default: 20
         - name: sortBy
           in: query
-          required: false
           schema:
             type: string
-            default: createdAt
         - name: sortDir
           in: query
-          required: false
           schema:
             type: string
-            default: desc
       responses:
-        "200":
+        '200':
           description: Paginated list of secrets
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PageResponseSecretResponse"
-        "401":
+                $ref: '#/components/schemas/PageResponseSecretResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
 
   /api/v1/vault/secrets/{id}:
     get:
       tags: [Secrets]
-      summary: Get secret metadata by ID
-      operationId: getSecret
+      summary: Get a secret by ID
+      operationId: getSecretById
       parameters:
-        - $ref: "#/components/parameters/SecretId"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
       responses:
-        "200":
-          description: Secret metadata
+        '200':
+          description: Secret found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SecretResponse"
-        "401":
+                $ref: '#/components/schemas/SecretResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
-        "404":
+        '404':
           description: Secret not found
-
     put:
       tags: [Secrets]
-      summary: Update secret metadata and/or create new version
+      summary: Update a secret
       operationId: updateSecret
       parameters:
-        - $ref: "#/components/parameters/SecretId"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UpdateSecretRequest"
+              $ref: '#/components/schemas/UpdateSecretRequest'
       responses:
-        "200":
+        '200':
           description: Secret updated
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SecretResponse"
-        "400":
+                $ref: '#/components/schemas/SecretResponse'
+        '400':
           description: Validation error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "401":
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
-        "404":
+        '404':
           description: Secret not found
-
     delete:
       tags: [Secrets]
-      summary: Soft-delete a secret (set inactive)
-      operationId: softDeleteSecret
+      summary: Soft-delete a secret
+      operationId: deleteSecret
       parameters:
-        - $ref: "#/components/parameters/SecretId"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
       responses:
-        "204":
+        '204':
           description: Secret soft-deleted
-        "401":
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
-        "404":
+        '404':
           description: Secret not found
 
   /api/v1/vault/secrets/{id}/permanent:
     delete:
       tags: [Secrets]
-      summary: Permanently delete a secret and all versions
-      operationId: hardDeleteSecret
+      summary: Permanently delete a secret
+      operationId: permanentlyDeleteSecret
       parameters:
-        - $ref: "#/components/parameters/SecretId"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
       responses:
-        "204":
+        '204':
           description: Secret permanently deleted
-        "401":
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
-        "404":
+        '404':
           description: Secret not found
 
   /api/v1/vault/secrets/by-path:
     get:
       tags: [Secrets]
-      summary: Get secret metadata by path
+      summary: Get a secret by path
       operationId: getSecretByPath
       parameters:
         - name: path
@@ -255,212 +258,81 @@ paths:
           schema:
             type: string
       responses:
-        "200":
-          description: Secret metadata
+        '200':
+          description: Secret found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SecretResponse"
-        "401":
+                $ref: '#/components/schemas/SecretResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
-        "404":
+        '404':
           description: Secret not found
 
   /api/v1/vault/secrets/{id}/value:
     get:
       tags: [Secrets]
-      summary: Read decrypted secret value (current version)
-      operationId: readSecretValue
+      summary: Get the current decrypted value of a secret
+      operationId: getSecretValue
       parameters:
-        - $ref: "#/components/parameters/SecretId"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
       responses:
-        "200":
+        '200':
           description: Decrypted secret value
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SecretValueResponse"
-        "401":
+                $ref: '#/components/schemas/SecretValueResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
-        "404":
+        '404':
           description: Secret not found
-
-  /api/v1/vault/secrets/{id}/versions:
-    get:
-      tags: [Secrets]
-      summary: List secret versions
-      operationId: listVersions
-      parameters:
-        - $ref: "#/components/parameters/SecretId"
-        - name: page
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int32
-            default: 0
-        - name: size
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int32
-            default: 20
-      responses:
-        "200":
-          description: Paginated list of versions
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PageResponseSecretVersionResponse"
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden
-        "404":
-          description: Secret not found
-
-  /api/v1/vault/secrets/{id}/versions/{version}:
-    get:
-      tags: [Secrets]
-      summary: Get version metadata
-      operationId: getVersion
-      parameters:
-        - $ref: "#/components/parameters/SecretId"
-        - $ref: "#/components/parameters/VersionNumber"
-      responses:
-        "200":
-          description: Version metadata
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SecretVersionResponse"
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden
-        "404":
-          description: Version not found
-
-    delete:
-      tags: [Secrets]
-      summary: Destroy a secret version (irreversible)
-      operationId: destroyVersion
-      parameters:
-        - $ref: "#/components/parameters/SecretId"
-        - $ref: "#/components/parameters/VersionNumber"
-      responses:
-        "204":
-          description: Version destroyed
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden
-        "404":
-          description: Version not found
 
   /api/v1/vault/secrets/{id}/versions/{version}/value:
     get:
       tags: [Secrets]
-      summary: Read decrypted secret value for a specific version
-      operationId: readSecretVersionValue
+      summary: Get the decrypted value of a specific secret version
+      operationId: getSecretVersionValue
       parameters:
-        - $ref: "#/components/parameters/SecretId"
-        - $ref: "#/components/parameters/VersionNumber"
-      responses:
-        "200":
-          description: Decrypted secret value for the version
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SecretValueResponse"
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden
-        "404":
-          description: Version not found
-
-  /api/v1/vault/secrets/{id}/metadata:
-    get:
-      tags: [Secrets]
-      summary: Get secret metadata key-value pairs
-      operationId: getMetadata
-      parameters:
-        - $ref: "#/components/parameters/SecretId"
-      responses:
-        "200":
-          description: Metadata map
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties:
-                  type: string
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden
-        "404":
-          description: Secret not found
-
-  /api/v1/vault/secrets/{id}/metadata/{key}:
-    put:
-      tags: [Secrets]
-      summary: Set a metadata key-value pair
-      operationId: setMetadata
-      parameters:
-        - $ref: "#/components/parameters/SecretId"
-        - name: key
+        - name: id
           in: path
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          text/plain:
-            schema:
-              type: string
-      responses:
-        "204":
-          description: Metadata set
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden
-        "404":
-          description: Secret not found
-
-    delete:
-      tags: [Secrets]
-      summary: Remove a metadata key
-      operationId: removeMetadata
-      parameters:
-        - $ref: "#/components/parameters/SecretId"
-        - name: key
+            format: uuid
+        - name: version
           in: path
           required: true
           schema:
-            type: string
+            type: integer
+            format: int32
       responses:
-        "204":
-          description: Metadata key removed
-        "401":
+        '200':
+          description: Decrypted secret value for specified version
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecretValueResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
-        "404":
-          description: Secret not found
+        '404':
+          description: Secret or version not found
 
   /api/v1/vault/secrets/search:
     get:
       tags: [Secrets]
-      summary: Search secrets by name
+      summary: Search secrets by query string
       operationId: searchSecrets
       parameters:
         - name: q
@@ -470,55 +342,234 @@ paths:
             type: string
         - name: page
           in: query
-          required: false
           schema:
             type: integer
             format: int32
             default: 0
         - name: size
           in: query
-          required: false
           schema:
             type: integer
             format: int32
             default: 20
       responses:
-        "200":
+        '200':
           description: Paginated search results
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PageResponseSecretResponse"
-        "401":
+                $ref: '#/components/schemas/PageResponseSecretResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
 
   /api/v1/vault/secrets/paths:
     get:
       tags: [Secrets]
-      summary: List secret paths under a prefix
-      operationId: listPaths
+      summary: List secret paths matching a prefix
+      operationId: listSecretPaths
       parameters:
         - name: prefix
           in: query
-          required: false
+          required: true
           schema:
             type: string
-            default: /
       responses:
-        "200":
-          description: List of paths
+        '200':
+          description: List of matching paths
           content:
             application/json:
               schema:
                 type: array
                 items:
                   type: string
-        "401":
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
+
+  /api/v1/vault/secrets/{id}/versions:
+    get:
+      tags: [Secrets]
+      summary: List versions of a secret
+      operationId: listSecretVersions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 20
+      responses:
+        '200':
+          description: Paginated list of secret versions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageResponseSecretVersionResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Secret not found
+
+  /api/v1/vault/secrets/{id}/versions/{version}:
+    get:
+      tags: [Secrets]
+      summary: Get a specific secret version
+      operationId: getSecretVersion
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Secret version details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecretVersionResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Secret or version not found
+    delete:
+      tags: [Secrets]
+      summary: Destroy a specific secret version
+      operationId: destroySecretVersion
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '204':
+          description: Version destroyed
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Secret or version not found
+
+  /api/v1/vault/secrets/{id}/metadata:
+    get:
+      tags: [Secrets]
+      summary: Get all metadata for a secret
+      operationId: getSecretMetadata
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Metadata key-value pairs
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Secret not found
+
+  /api/v1/vault/secrets/{id}/metadata/{key}:
+    put:
+      tags: [Secrets]
+      summary: Set a metadata key-value pair on a secret
+      operationId: setSecretMetadataKey
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: string
+      responses:
+        '204':
+          description: Metadata key set
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Secret not found
+    delete:
+      tags: [Secrets]
+      summary: Remove a metadata key from a secret
+      operationId: deleteSecretMetadataKey
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Metadata key removed
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Secret not found
 
   /api/v1/vault/secrets/stats:
     get:
@@ -526,8 +577,8 @@ paths:
       summary: Get secret statistics
       operationId: getSecretStats
       responses:
-        "200":
-          description: Statistics map (counts by type)
+        '200':
+          description: Secret statistics
           content:
             application/json:
               schema:
@@ -535,9 +586,9 @@ paths:
                 additionalProperties:
                   type: integer
                   format: int64
-        "401":
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
 
   /api/v1/vault/secrets/expiring:
@@ -548,226 +599,238 @@ paths:
       parameters:
         - name: withinHours
           in: query
-          required: false
+          required: true
           schema:
             type: integer
             format: int32
-            default: 24
       responses:
-        "200":
+        '200':
           description: List of expiring secrets
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/SecretResponse"
-        "401":
+                  $ref: '#/components/schemas/SecretResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
 
-  # ────────────────────────────────────────────────────────────────
-  # Policies
-  # ────────────────────────────────────────────────────────────────
+  # ═══════════════════════════════════════════════════════════════
+  # POLICIES
+  # ═══════════════════════════════════════════════════════════════
   /api/v1/vault/policies:
     post:
       tags: [Policies]
-      summary: Create an access policy
+      summary: Create a new access policy
       operationId: createPolicy
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreatePolicyRequest"
+              $ref: '#/components/schemas/CreatePolicyRequest'
       responses:
-        "201":
+        '201':
           description: Policy created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AccessPolicyResponse"
-        "400":
+                $ref: '#/components/schemas/AccessPolicyResponse'
+        '400':
           description: Validation error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "401":
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
-
     get:
       tags: [Policies]
-      summary: List policies
+      summary: List access policies with pagination
       operationId: listPolicies
       parameters:
         - name: activeOnly
           in: query
-          required: false
           schema:
             type: boolean
-            default: true
         - name: page
           in: query
-          required: false
           schema:
             type: integer
             format: int32
             default: 0
         - name: size
           in: query
-          required: false
           schema:
             type: integer
             format: int32
             default: 20
       responses:
-        "200":
+        '200':
           description: Paginated list of policies
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PageResponseAccessPolicyResponse"
-        "401":
+                $ref: '#/components/schemas/PageResponseAccessPolicyResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
 
   /api/v1/vault/policies/{id}:
     get:
       tags: [Policies]
-      summary: Get policy by ID
-      operationId: getPolicy
+      summary: Get an access policy by ID
+      operationId: getPolicyById
       parameters:
-        - $ref: "#/components/parameters/PolicyId"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
       responses:
-        "200":
-          description: Policy details
+        '200':
+          description: Policy found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AccessPolicyResponse"
-        "401":
+                $ref: '#/components/schemas/AccessPolicyResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
-        "404":
+        '404':
           description: Policy not found
-
     put:
       tags: [Policies]
       summary: Update an access policy
       operationId: updatePolicy
       parameters:
-        - $ref: "#/components/parameters/PolicyId"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UpdatePolicyRequest"
+              $ref: '#/components/schemas/UpdatePolicyRequest'
       responses:
-        "200":
+        '200':
           description: Policy updated
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AccessPolicyResponse"
-        "400":
+                $ref: '#/components/schemas/AccessPolicyResponse'
+        '400':
           description: Validation error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "401":
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
-        "404":
+        '404':
           description: Policy not found
-
     delete:
       tags: [Policies]
-      summary: Delete policy and all bindings
+      summary: Delete an access policy
       operationId: deletePolicy
       parameters:
-        - $ref: "#/components/parameters/PolicyId"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
       responses:
-        "204":
+        '204':
           description: Policy deleted
-        "401":
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
-        "404":
+        '404':
           description: Policy not found
 
   /api/v1/vault/policies/bindings:
     post:
       tags: [Policies]
       summary: Create a policy binding
-      operationId: createBinding
+      operationId: createPolicyBinding
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateBindingRequest"
+              $ref: '#/components/schemas/CreateBindingRequest'
       responses:
-        "201":
+        '201':
           description: Binding created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PolicyBindingResponse"
-        "400":
+                $ref: '#/components/schemas/PolicyBindingResponse'
+        '400':
           description: Validation error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "401":
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
 
   /api/v1/vault/policies/{id}/bindings:
     get:
       tags: [Policies]
       summary: List bindings for a policy
-      operationId: listBindingsForPolicy
+      operationId: listPolicyBindings
       parameters:
-        - $ref: "#/components/parameters/PolicyId"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
       responses:
-        "200":
+        '200':
           description: List of bindings
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/PolicyBindingResponse"
-        "401":
+                  $ref: '#/components/schemas/PolicyBindingResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
-        "404":
+        '404':
           description: Policy not found
 
   /api/v1/vault/policies/bindings/target:
     get:
       tags: [Policies]
-      summary: List bindings for a target
-      operationId: listBindingsForTarget
+      summary: List bindings for a specific target
+      operationId: listBindingsByTarget
       parameters:
         - name: type
           in: query
           required: true
           schema:
-            $ref: "#/components/schemas/BindingType"
+            $ref: '#/components/schemas/BindingType'
         - name: targetId
           in: query
           required: true
@@ -775,47 +838,46 @@ paths:
             type: string
             format: uuid
       responses:
-        "200":
-          description: List of bindings for the target
+        '200':
+          description: List of bindings for target
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/PolicyBindingResponse"
-        "401":
+                  $ref: '#/components/schemas/PolicyBindingResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
 
   /api/v1/vault/policies/bindings/{id}:
     delete:
       tags: [Policies]
-      summary: Delete a binding
-      operationId: deleteBinding
+      summary: Delete a policy binding
+      operationId: deletePolicyBinding
       parameters:
         - name: id
           in: path
           required: true
-          description: Binding UUID
           schema:
             type: string
             format: uuid
       responses:
-        "204":
+        '204':
           description: Binding deleted
-        "401":
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
-        "404":
+        '404':
           description: Binding not found
 
   /api/v1/vault/policies/evaluate:
     post:
       tags: [Policies]
-      summary: Evaluate access for a user on a path
-      operationId: evaluateAccess
+      summary: Evaluate access for a user
+      operationId: evaluateUserAccess
       parameters:
         - name: userId
           in: query
@@ -832,23 +894,23 @@ paths:
           in: query
           required: true
           schema:
-            $ref: "#/components/schemas/PolicyPermission"
+            $ref: '#/components/schemas/PolicyPermission'
       responses:
-        "200":
+        '200':
           description: Access decision
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AccessDecision"
-        "401":
+                $ref: '#/components/schemas/AccessDecision'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
 
   /api/v1/vault/policies/evaluate/service:
     post:
       tags: [Policies]
-      summary: Evaluate access for a service on a path
+      summary: Evaluate access for a service
       operationId: evaluateServiceAccess
       parameters:
         - name: serviceId
@@ -866,17 +928,17 @@ paths:
           in: query
           required: true
           schema:
-            $ref: "#/components/schemas/PolicyPermission"
+            $ref: '#/components/schemas/PolicyPermission'
       responses:
-        "200":
+        '200':
           description: Access decision
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AccessDecision"
-        "401":
+                $ref: '#/components/schemas/AccessDecision'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
 
   /api/v1/vault/policies/stats:
@@ -885,8 +947,8 @@ paths:
       summary: Get policy statistics
       operationId: getPolicyStats
       responses:
-        "200":
-          description: Statistics map
+        '200':
+          description: Policy statistics
           content:
             application/json:
               schema:
@@ -894,48 +956,48 @@ paths:
                 additionalProperties:
                   type: integer
                   format: int64
-        "401":
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
 
-  # ────────────────────────────────────────────────────────────────
-  # Rotation
-  # ────────────────────────────────────────────────────────────────
+  # ═══════════════════════════════════════════════════════════════
+  # ROTATION
+  # ═══════════════════════════════════════════════════════════════
   /api/v1/vault/rotation/policies:
     post:
       tags: [Rotation]
-      summary: Create or update a rotation policy for a secret
-      operationId: createOrUpdateRotationPolicy
+      summary: Create a rotation policy
+      operationId: createRotationPolicy
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateRotationPolicyRequest"
+              $ref: '#/components/schemas/CreateRotationPolicyRequest'
       responses:
-        "201":
-          description: Rotation policy created or updated
+        '201':
+          description: Rotation policy created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RotationPolicyResponse"
-        "400":
+                $ref: '#/components/schemas/RotationPolicyResponse'
+        '400':
           description: Validation error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "401":
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
 
   /api/v1/vault/rotation/policies/{secretId}:
     get:
       tags: [Rotation]
-      summary: Get rotation policy for a secret
-      operationId: getRotationPolicy
+      summary: Get rotation policy by secret ID
+      operationId: getRotationPolicyBySecretId
       parameters:
         - name: secretId
           in: path
@@ -944,17 +1006,17 @@ paths:
             type: string
             format: uuid
       responses:
-        "200":
-          description: Rotation policy
+        '200':
+          description: Rotation policy found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RotationPolicyResponse"
-        "401":
+                $ref: '#/components/schemas/RotationPolicyResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
-        "404":
+        '404':
           description: Rotation policy not found
 
   /api/v1/vault/rotation/policies/{policyId}:
@@ -974,27 +1036,26 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UpdateRotationPolicyRequest"
+              $ref: '#/components/schemas/UpdateRotationPolicyRequest'
       responses:
-        "200":
+        '200':
           description: Rotation policy updated
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RotationPolicyResponse"
-        "400":
+                $ref: '#/components/schemas/RotationPolicyResponse'
+        '400':
           description: Validation error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "401":
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
-        "404":
+        '404':
           description: Rotation policy not found
-
     delete:
       tags: [Rotation]
       summary: Delete a rotation policy
@@ -1007,19 +1068,19 @@ paths:
             type: string
             format: uuid
       responses:
-        "204":
+        '204':
           description: Rotation policy deleted
-        "401":
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
-        "404":
+        '404':
           description: Rotation policy not found
 
   /api/v1/vault/rotation/rotate/{secretId}:
     post:
       tags: [Rotation]
-      summary: Trigger manual rotation for a secret
+      summary: Trigger immediate rotation of a secret
       operationId: rotateSecret
       parameters:
         - name: secretId
@@ -1029,17 +1090,17 @@ paths:
             type: string
             format: uuid
       responses:
-        "200":
-          description: Rotation result
+        '200':
+          description: Rotation executed
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RotationHistoryResponse"
-        "401":
+                $ref: '#/components/schemas/RotationHistoryResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
-        "404":
+        '404':
           description: Secret or rotation policy not found
 
   /api/v1/vault/rotation/history/{secretId}:
@@ -1056,35 +1117,33 @@ paths:
             format: uuid
         - name: page
           in: query
-          required: false
           schema:
             type: integer
             format: int32
             default: 0
         - name: size
           in: query
-          required: false
           schema:
             type: integer
             format: int32
             default: 20
       responses:
-        "200":
+        '200':
           description: Paginated rotation history
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PageResponseRotationHistoryResponse"
-        "401":
+                $ref: '#/components/schemas/PageResponseRotationHistoryResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
 
   /api/v1/vault/rotation/history/{secretId}/last:
     get:
       tags: [Rotation]
-      summary: Get last successful rotation
-      operationId: getLastSuccessfulRotation
+      summary: Get the last rotation event for a secret
+      operationId: getLastRotation
       parameters:
         - name: secretId
           in: path
@@ -1093,23 +1152,23 @@ paths:
             type: string
             format: uuid
       responses:
-        "200":
-          description: Last successful rotation entry
+        '200':
+          description: Last rotation event
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RotationHistoryResponse"
-        "401":
+                $ref: '#/components/schemas/RotationHistoryResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
-        "404":
-          description: No successful rotation found
+        '404':
+          description: No rotation history found
 
   /api/v1/vault/rotation/stats/{secretId}:
     get:
       tags: [Rotation]
-      summary: Get rotation statistics
+      summary: Get rotation statistics for a secret
       operationId: getRotationStats
       parameters:
         - name: secretId
@@ -1119,8 +1178,8 @@ paths:
             type: string
             format: uuid
       responses:
-        "200":
-          description: Rotation statistics map
+        '200':
+          description: Rotation statistics
           content:
             application/json:
               schema:
@@ -1128,116 +1187,294 @@ paths:
                 additionalProperties:
                   type: integer
                   format: int64
-        "401":
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
 
-  # ────────────────────────────────────────────────────────────────
-  # Transit
-  # ────────────────────────────────────────────────────────────────
-  /api/v1/vault/transit/keys:
+  # ═══════════════════════════════════════════════════════════════
+  # DYNAMIC SECRETS
+  # ═══════════════════════════════════════════════════════════════
+  /api/v1/vault/dynamic/leases:
     post:
-      tags: [Transit]
-      summary: Create a named transit encryption key
-      operationId: createTransitKey
+      tags: [Dynamic Secrets]
+      summary: Create a dynamic secret lease
+      operationId: createDynamicLease
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateTransitKeyRequest"
+              $ref: '#/components/schemas/CreateDynamicLeaseRequest'
       responses:
-        "201":
-          description: Transit key created
+        '201':
+          description: Lease created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/TransitKeyResponse"
-        "400":
+                $ref: '#/components/schemas/DynamicLeaseResponse'
+        '400':
           description: Validation error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "401":
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
-
     get:
-      tags: [Transit]
-      summary: List transit keys
-      operationId: listTransitKeys
+      tags: [Dynamic Secrets]
+      summary: List dynamic leases with optional filtering
+      operationId: listDynamicLeases
       parameters:
-        - name: activeOnly
+        - name: secretId
           in: query
-          required: false
           schema:
-            type: boolean
-            default: true
+            type: string
+            format: uuid
         - name: page
           in: query
-          required: false
           schema:
             type: integer
             format: int32
             default: 0
         - name: size
           in: query
-          required: false
           schema:
             type: integer
             format: int32
             default: 20
       responses:
-        "200":
+        '200':
+          description: Paginated list of leases
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageResponseDynamicLeaseResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+
+  /api/v1/vault/dynamic/leases/{leaseId}:
+    get:
+      tags: [Dynamic Secrets]
+      summary: Get a dynamic lease by lease ID
+      operationId: getDynamicLease
+      parameters:
+        - name: leaseId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lease found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DynamicLeaseResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Lease not found
+
+  /api/v1/vault/dynamic/leases/{leaseId}/revoke:
+    post:
+      tags: [Dynamic Secrets]
+      summary: Revoke a dynamic lease
+      operationId: revokeDynamicLease
+      parameters:
+        - name: leaseId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Lease revoked
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Lease not found
+
+  /api/v1/vault/dynamic/leases/revoke-all:
+    post:
+      tags: [Dynamic Secrets]
+      summary: Revoke all leases for a secret
+      operationId: revokeAllDynamicLeases
+      parameters:
+        - name: secretId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Revocation count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  revoked:
+                    type: integer
+                    format: int32
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+
+  /api/v1/vault/dynamic/stats:
+    get:
+      tags: [Dynamic Secrets]
+      summary: Get dynamic secret statistics
+      operationId: getDynamicStats
+      parameters:
+        - name: secretId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Dynamic secret statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: integer
+                  format: int64
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+
+  /api/v1/vault/dynamic/active-count:
+    get:
+      tags: [Dynamic Secrets]
+      summary: Get count of active leases
+      operationId: getActiveLeaseCount
+      responses:
+        '200':
+          description: Active lease count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  activeLeases:
+                    type: integer
+                    format: int64
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+
+  # ═══════════════════════════════════════════════════════════════
+  # TRANSIT
+  # ═══════════════════════════════════════════════════════════════
+  /api/v1/vault/transit/keys:
+    post:
+      tags: [Transit]
+      summary: Create a transit encryption key
+      operationId: createTransitKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTransitKeyRequest'
+      responses:
+        '201':
+          description: Transit key created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransitKeyResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+    get:
+      tags: [Transit]
+      summary: List transit keys with pagination
+      operationId: listTransitKeys
+      parameters:
+        - name: activeOnly
+          in: query
+          schema:
+            type: boolean
+        - name: page
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 20
+      responses:
+        '200':
           description: Paginated list of transit keys
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PageResponseTransitKeyResponse"
-        "401":
+                $ref: '#/components/schemas/PageResponseTransitKeyResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
 
   /api/v1/vault/transit/keys/{id}:
     get:
       tags: [Transit]
-      summary: Get transit key by ID
+      summary: Get a transit key by ID
       operationId: getTransitKeyById
       parameters:
         - name: id
           in: path
           required: true
-          description: Transit key UUID
           schema:
             type: string
             format: uuid
       responses:
-        "200":
-          description: Transit key details
+        '200':
+          description: Transit key found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/TransitKeyResponse"
-        "401":
+                $ref: '#/components/schemas/TransitKeyResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
-        "404":
+        '404':
           description: Transit key not found
-
     put:
       tags: [Transit]
-      summary: Update transit key metadata
+      summary: Update a transit key
       operationId: updateTransitKey
       parameters:
         - name: id
           in: path
           required: true
-          description: Transit key UUID
           schema:
             type: string
             format: uuid
@@ -1246,55 +1483,51 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UpdateTransitKeyRequest"
+              $ref: '#/components/schemas/UpdateTransitKeyRequest'
       responses:
-        "200":
+        '200':
           description: Transit key updated
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/TransitKeyResponse"
-        "400":
+                $ref: '#/components/schemas/TransitKeyResponse'
+        '400':
           description: Validation error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "401":
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
-        "404":
+        '404':
           description: Transit key not found
-
     delete:
       tags: [Transit]
-      summary: Delete transit key (must be deletable)
+      summary: Delete a transit key
       operationId: deleteTransitKey
       parameters:
         - name: id
           in: path
           required: true
-          description: Transit key UUID
           schema:
             type: string
             format: uuid
       responses:
-        "204":
+        '204':
           description: Transit key deleted
-        "401":
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
-        "404":
+        '404':
           description: Transit key not found
-        "409":
-          description: Key is not deletable
 
   /api/v1/vault/transit/keys/by-name:
     get:
       tags: [Transit]
-      summary: Get transit key by name
+      summary: Get a transit key by name
       operationId: getTransitKeyByName
       parameters:
         - name: name
@@ -1303,107 +1536,102 @@ paths:
           schema:
             type: string
       responses:
-        "200":
-          description: Transit key details
+        '200':
+          description: Transit key found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/TransitKeyResponse"
-        "401":
+                $ref: '#/components/schemas/TransitKeyResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
-        "404":
+        '404':
           description: Transit key not found
 
   /api/v1/vault/transit/keys/{id}/rotate:
     post:
       tags: [Transit]
-      summary: Rotate transit key (add new version)
+      summary: Rotate a transit key to a new version
       operationId: rotateTransitKey
       parameters:
         - name: id
           in: path
           required: true
-          description: Transit key UUID
           schema:
             type: string
             format: uuid
       responses:
-        "200":
+        '200':
           description: Transit key rotated
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/TransitKeyResponse"
-        "401":
+                $ref: '#/components/schemas/TransitKeyResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
-        "404":
+        '404':
           description: Transit key not found
 
   /api/v1/vault/transit/encrypt:
     post:
       tags: [Transit]
-      summary: Encrypt data with a named transit key
+      summary: Encrypt plaintext using a transit key
       operationId: transitEncrypt
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitEncryptRequest"
+              $ref: '#/components/schemas/TransitEncryptRequest'
       responses:
-        "200":
+        '200':
           description: Encrypted ciphertext
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/TransitEncryptResponse"
-        "400":
+                $ref: '#/components/schemas/TransitEncryptResponse'
+        '400':
           description: Validation error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "401":
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
-        "404":
-          description: Key not found
 
   /api/v1/vault/transit/decrypt:
     post:
       tags: [Transit]
-      summary: Decrypt data with a named transit key
+      summary: Decrypt ciphertext using a transit key
       operationId: transitDecrypt
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitDecryptRequest"
+              $ref: '#/components/schemas/TransitDecryptRequest'
       responses:
-        "200":
+        '200':
           description: Decrypted plaintext
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/TransitDecryptResponse"
-        "400":
+                $ref: '#/components/schemas/TransitDecryptResponse'
+        '400':
           description: Validation error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "401":
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
-        "404":
-          description: Key not found
 
   /api/v1/vault/transit/rewrap:
     post:
@@ -1415,26 +1643,24 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransitRewrapRequest"
+              $ref: '#/components/schemas/TransitRewrapRequest'
       responses:
-        "200":
-          description: Rewrapped ciphertext
+        '200':
+          description: Re-encrypted ciphertext
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/TransitEncryptResponse"
-        "400":
+                $ref: '#/components/schemas/TransitEncryptResponse'
+        '400':
           description: Validation error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "401":
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
-        "404":
-          description: Key not found
 
   /api/v1/vault/transit/datakey:
     post:
@@ -1448,36 +1674,32 @@ paths:
           schema:
             type: string
       responses:
-        "200":
-          description: Data key (plaintext + ciphertext)
+        '200':
+          description: Generated data key
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  plaintext:
+                  plaintextKey:
                     type: string
-                    description: Base64-encoded plaintext data key
-                  ciphertext:
+                  ciphertextKey:
                     type: string
-                    description: Wrapped (encrypted) data key
-                additionalProperties:
-                  type: string
-        "401":
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
-        "404":
-          description: Key not found
+        '404':
+          description: Transit key not found
 
   /api/v1/vault/transit/stats:
     get:
       tags: [Transit]
-      summary: Get transit key statistics
-      operationId: getTransitKeyStats
+      summary: Get transit statistics
+      operationId: getTransitStats
       responses:
-        "200":
-          description: Statistics map
+        '200':
+          description: Transit statistics
           content:
             application/json:
               schema:
@@ -1485,268 +1707,82 @@ paths:
                 additionalProperties:
                   type: integer
                   format: int64
-        "401":
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
 
-  # ────────────────────────────────────────────────────────────────
-  # Dynamic Secrets
-  # ────────────────────────────────────────────────────────────────
-  /api/v1/vault/dynamic/leases:
-    post:
-      tags: [Dynamic Secrets]
-      summary: Create a new dynamic secret lease
-      operationId: createDynamicLease
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateDynamicLeaseRequest"
-      responses:
-        "201":
-          description: Lease created with connection details
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/DynamicLeaseResponse"
-        "400":
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden
-
-    get:
-      tags: [Dynamic Secrets]
-      summary: List leases for a dynamic secret
-      operationId: listDynamicLeases
-      parameters:
-        - name: secretId
-          in: query
-          required: true
-          schema:
-            type: string
-            format: uuid
-        - name: page
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int32
-            default: 0
-        - name: size
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int32
-            default: 20
-      responses:
-        "200":
-          description: Paginated list of leases
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PageResponseDynamicLeaseResponse"
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden
-
-  /api/v1/vault/dynamic/leases/{leaseId}:
-    get:
-      tags: [Dynamic Secrets]
-      summary: Get lease by lease ID
-      operationId: getDynamicLease
-      parameters:
-        - name: leaseId
-          in: path
-          required: true
-          description: Unique lease identifier string
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Lease details (credentials not included)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/DynamicLeaseResponse"
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden
-        "404":
-          description: Lease not found
-
-  /api/v1/vault/dynamic/leases/{leaseId}/revoke:
-    post:
-      tags: [Dynamic Secrets]
-      summary: Revoke an active lease
-      operationId: revokeDynamicLease
-      parameters:
-        - name: leaseId
-          in: path
-          required: true
-          description: Lease identifier to revoke
-          schema:
-            type: string
-      responses:
-        "204":
-          description: Lease revoked
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden
-        "404":
-          description: Lease not found
-
-  /api/v1/vault/dynamic/leases/revoke-all:
-    post:
-      tags: [Dynamic Secrets]
-      summary: Revoke all active leases for a secret
-      operationId: revokeAllDynamicLeases
-      parameters:
-        - name: secretId
-          in: query
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        "200":
-          description: Revocation count
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  revoked:
-                    type: integer
-                    format: int32
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden
-
-  /api/v1/vault/dynamic/stats:
-    get:
-      tags: [Dynamic Secrets]
-      summary: Get lease statistics
-      operationId: getDynamicLeaseStats
-      parameters:
-        - name: secretId
-          in: query
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        "200":
-          description: Lease statistics map
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties:
-                  type: integer
-                  format: int64
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden
-
-  /api/v1/vault/dynamic/active-count:
-    get:
-      tags: [Dynamic Secrets]
-      summary: Get total active lease count
-      operationId: getActiveDynamicLeaseCount
-      responses:
-        "200":
-          description: Active lease count
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  activeLeases:
-                    type: integer
-                    format: int64
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden
-
-  # ────────────────────────────────────────────────────────────────
-  # Seal
-  # ────────────────────────────────────────────────────────────────
+  # ═══════════════════════════════════════════════════════════════
+  # SEAL
+  # ═══════════════════════════════════════════════════════════════
   /api/v1/vault/seal/status:
     get:
       tags: [Seal]
-      summary: Get Vault seal status (public - no auth required)
+      summary: Get vault seal status
+      description: Public endpoint — no authentication required.
       operationId: getSealStatus
       security: []
       responses:
-        "200":
+        '200':
           description: Current seal status
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SealStatusResponse"
+                $ref: '#/components/schemas/SealStatusResponse'
 
   /api/v1/vault/seal/seal:
     post:
       tags: [Seal]
-      summary: Seal the Vault
+      summary: Seal the vault
       operationId: sealVault
       responses:
-        "200":
+        '200':
           description: Vault sealed
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SealStatusResponse"
-        "401":
+                $ref: '#/components/schemas/SealStatusResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
 
   /api/v1/vault/seal/unseal:
     post:
       tags: [Seal]
-      summary: Submit a key share to unseal the Vault
+      summary: Unseal the vault with a key share
       operationId: unsealVault
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SealActionRequest"
+              $ref: '#/components/schemas/SealActionRequest'
       responses:
-        "200":
-          description: Updated seal status (may still be UNSEALING)
+        '200':
+          description: Unseal progress or vault unsealed
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SealStatusResponse"
-        "401":
+                $ref: '#/components/schemas/SealStatusResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
 
   /api/v1/vault/seal/generate-shares:
     post:
       tags: [Seal]
-      summary: Generate key shares for distribution
+      summary: Generate Shamir key shares
       operationId: generateShares
       responses:
-        "200":
+        '200':
           description: Generated shares
           content:
             application/json:
@@ -1763,9 +1799,9 @@ paths:
                   threshold:
                     type: integer
                     format: int32
-        "401":
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
 
   /api/v1/vault/seal/info:
@@ -1774,102 +1810,92 @@ paths:
       summary: Get seal configuration info
       operationId: getSealInfo
       responses:
-        "200":
-          description: Seal configuration
+        '200':
+          description: Seal configuration information
           content:
             application/json:
               schema:
                 type: object
-                additionalProperties: true
-        "401":
+                additionalProperties: {}
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
 
-  # ────────────────────────────────────────────────────────────────
-  # Audit
-  # ────────────────────────────────────────────────────────────────
+  # ═══════════════════════════════════════════════════════════════
+  # AUDIT
+  # ═══════════════════════════════════════════════════════════════
   /api/v1/vault/audit/query:
     get:
       tags: [Audit]
-      summary: Query the audit log with optional filters
+      summary: Query audit log entries
       operationId: queryAuditLog
       parameters:
         - name: userId
           in: query
-          required: false
           schema:
             type: string
             format: uuid
         - name: operation
           in: query
-          required: false
           schema:
             type: string
         - name: path
           in: query
-          required: false
           schema:
             type: string
         - name: resourceType
           in: query
-          required: false
           schema:
             type: string
         - name: resourceId
           in: query
-          required: false
           schema:
             type: string
             format: uuid
         - name: successOnly
           in: query
-          required: false
           schema:
             type: boolean
         - name: startTime
           in: query
-          required: false
           schema:
             type: string
             format: date-time
         - name: endTime
           in: query
-          required: false
           schema:
             type: string
             format: date-time
         - name: page
           in: query
-          required: false
           schema:
             type: integer
             format: int32
             default: 0
         - name: size
           in: query
-          required: false
           schema:
             type: integer
             format: int32
             default: 20
       responses:
-        "200":
+        '200':
           description: Paginated audit entries
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PageResponseAuditEntryResponse"
-        "401":
+                $ref: '#/components/schemas/PageResponseAuditEntryResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
 
   /api/v1/vault/audit/resource/{resourceType}/{resourceId}:
     get:
       tags: [Audit]
       summary: Get audit entries for a specific resource
-      operationId: getAuditForResource
+      operationId: getAuditByResource
       parameters:
         - name: resourceType
           in: path
@@ -1884,38 +1910,36 @@ paths:
             format: uuid
         - name: page
           in: query
-          required: false
           schema:
             type: integer
             format: int32
             default: 0
         - name: size
           in: query
-          required: false
           schema:
             type: integer
             format: int32
             default: 20
       responses:
-        "200":
-          description: Paginated audit entries for the resource
+        '200':
+          description: Paginated audit entries for resource
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PageResponseAuditEntryResponse"
-        "401":
+                $ref: '#/components/schemas/PageResponseAuditEntryResponse'
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
 
   /api/v1/vault/audit/stats:
     get:
       tags: [Audit]
-      summary: Get audit log statistics
+      summary: Get audit statistics
       operationId: getAuditStats
       responses:
-        "200":
-          description: Audit statistics map
+        '200':
+          description: Audit statistics
           content:
             application/json:
               schema:
@@ -1923,60 +1947,25 @@ paths:
                 additionalProperties:
                   type: integer
                   format: int64
-        "401":
+        '401':
           description: Unauthorized
-        "403":
+        '403':
           description: Forbidden
 
-# ══════════════════════════════════════════════════════════════════
-# Components
-# ══════════════════════════════════════════════════════════════════
 components:
-
   securitySchemes:
-    BearerAuth:
+    bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: JWT token obtained from CodeOps-Server authentication
-
-  parameters:
-    SecretId:
-      name: id
-      in: path
-      required: true
-      description: Secret UUID
-      schema:
-        type: string
-        format: uuid
-
-    PolicyId:
-      name: id
-      in: path
-      required: true
-      description: Policy UUID
-      schema:
-        type: string
-        format: uuid
-
-    VersionNumber:
-      name: version
-      in: path
-      required: true
-      description: Version number
-      schema:
-        type: integer
-        format: int32
 
   schemas:
-    # ── Enums ──────────────────────────────────────────────────────
+    # ═══════════════════════════════════════════════════════════════
+    # ENUMS
+    # ═══════════════════════════════════════════════════════════════
     SecretType:
       type: string
       enum: [STATIC, DYNAMIC, REFERENCE]
-
-    SealStatus:
-      type: string
-      enum: [SEALED, UNSEALED, UNSEALING]
 
     PolicyPermission:
       type: string
@@ -1994,7 +1983,13 @@ components:
       type: string
       enum: [ACTIVE, EXPIRED, REVOKED]
 
-    # ── Request DTOs ──────────────────────────────────────────────
+    SealStatus:
+      type: string
+      enum: [SEALED, UNSEALED, UNSEALING]
+
+    # ═══════════════════════════════════════════════════════════════
+    # REQUEST SCHEMAS
+    # ═══════════════════════════════════════════════════════════════
     CreateSecretRequest:
       type: object
       required: [path, name, value, secretType]
@@ -2007,19 +2002,18 @@ components:
         name:
           type: string
           maxLength: 200
-          description: Human-readable name
         value:
           type: string
-          description: Secret value (plaintext, encrypted by service layer)
+          description: The secret value (plaintext — encrypted by service layer)
         description:
           type: string
           maxLength: 2000
         secretType:
-          $ref: "#/components/schemas/SecretType"
+          $ref: '#/components/schemas/SecretType'
         referenceArn:
           type: string
           maxLength: 500
-          description: External store ARN/URL for REFERENCE type
+          description: For REFERENCE type — the external store ARN/URL
         maxVersions:
           type: integer
           format: int32
@@ -2046,11 +2040,11 @@ components:
       properties:
         value:
           type: string
-          description: New secret value (creates a new version if provided)
+          description: New secret value (if provided, creates a new version)
         changeDescription:
           type: string
           maxLength: 500
-          description: Description of what changed
+          description: Description of what changed in this version
         description:
           type: string
           maxLength: 2000
@@ -2060,18 +2054,21 @@ components:
           format: int32
           minimum: 1
           maximum: 1000
+          description: Updated max versions (null = no change)
         retentionDays:
           type: integer
           format: int32
           minimum: 1
+          description: Updated retention days (null = no change)
         expiresAt:
           type: string
           format: date-time
+          description: Updated expiration (null = no change)
         metadata:
           type: object
           additionalProperties:
             type: string
-          description: Replacement metadata (null = no change, empty = clear)
+          description: Replacement metadata (null = no change, empty map = clear all)
 
     CreatePolicyRequest:
       type: object
@@ -2080,19 +2077,18 @@ components:
         name:
           type: string
           maxLength: 200
-          description: Unique policy name within the team
         description:
           type: string
           maxLength: 2000
         pathPattern:
           type: string
           maxLength: 500
-          description: 'Glob pattern for secret paths (e.g., "/services/talent-app/*")'
+          description: "Glob pattern for secret paths (e.g., /services/talent-app/*)"
         permissions:
           type: array
           minItems: 1
           items:
-            $ref: "#/components/schemas/PolicyPermission"
+            $ref: '#/components/schemas/PolicyPermission'
         isDenyPolicy:
           type: boolean
           description: Whether this policy denies (true) or allows (false) the permissions
@@ -2112,7 +2108,7 @@ components:
         permissions:
           type: array
           items:
-            $ref: "#/components/schemas/PolicyPermission"
+            $ref: '#/components/schemas/PolicyPermission'
         isDenyPolicy:
           type: boolean
         isActive:
@@ -2126,7 +2122,7 @@ components:
           type: string
           format: uuid
         bindingType:
-          $ref: "#/components/schemas/BindingType"
+          $ref: '#/components/schemas/BindingType'
         bindingTargetId:
           type: string
           format: uuid
@@ -2140,31 +2136,32 @@ components:
           type: string
           format: uuid
         strategy:
-          $ref: "#/components/schemas/RotationStrategy"
+          $ref: '#/components/schemas/RotationStrategy'
         rotationIntervalHours:
           type: integer
           format: int32
           minimum: 1
+          description: How often to rotate (in hours)
         randomLength:
           type: integer
           format: int32
           minimum: 8
           maximum: 1024
-          description: For RANDOM_GENERATE strategy
+          description: For RANDOM_GENERATE — character length
         randomCharset:
           type: string
           maxLength: 100
-          description: For RANDOM_GENERATE strategy
+          description: For RANDOM_GENERATE — allowed characters
         externalApiUrl:
           type: string
           maxLength: 500
-          description: For EXTERNAL_API strategy
+          description: For EXTERNAL_API — endpoint URL
         externalApiHeaders:
           type: string
-          description: For EXTERNAL_API strategy (JSON headers string)
+          description: For EXTERNAL_API — JSON headers string
         scriptCommand:
           type: string
-          description: For CUSTOM_SCRIPT strategy
+          description: For CUSTOM_SCRIPT — command to execute
         maxFailures:
           type: integer
           format: int32
@@ -2176,7 +2173,7 @@ components:
       type: object
       properties:
         strategy:
-          $ref: "#/components/schemas/RotationStrategy"
+          $ref: '#/components/schemas/RotationStrategy'
         rotationIntervalHours:
           type: integer
           format: int32
@@ -2203,6 +2200,28 @@ components:
           maximum: 100
         isActive:
           type: boolean
+
+    CreateDynamicLeaseRequest:
+      type: object
+      required: [secretId, ttlSeconds]
+      properties:
+        secretId:
+          type: string
+          format: uuid
+        ttlSeconds:
+          type: integer
+          format: int32
+          minimum: 60
+          maximum: 86400
+          description: Requested lease duration in seconds (60-86400)
+
+    RevokeDynamicLeaseRequest:
+      type: object
+      required: [leaseId]
+      properties:
+        leaseId:
+          type: string
+          description: The lease identifier to revoke
 
     CreateTransitKeyRequest:
       type: object
@@ -2218,13 +2237,13 @@ components:
         algorithm:
           type: string
           maxLength: 30
-          description: 'Encryption algorithm (default: "AES-256-GCM")'
+          description: "Encryption algorithm (default: AES-256-GCM)"
         isDeletable:
           type: boolean
-          description: Whether key can be deleted (default false)
+          description: "Whether key can be deleted (default: false for safety)"
         isExportable:
           type: boolean
-          description: Whether key material can be exported (default false)
+          description: "Whether key material can be exported (default: false)"
 
     UpdateTransitKeyRequest:
       type: object
@@ -2265,7 +2284,7 @@ components:
           description: Name of the transit key to use
         ciphertext:
           type: string
-          description: Encrypted data (prefixed with key version)
+          description: The encrypted data (prefixed with key version)
 
     TransitRewrapRequest:
       type: object
@@ -2279,29 +2298,6 @@ components:
           type: string
           description: Existing ciphertext to rewrap
 
-    CreateDynamicLeaseRequest:
-      type: object
-      required: [secretId, ttlSeconds]
-      properties:
-        secretId:
-          type: string
-          format: uuid
-          description: The dynamic secret to generate credentials from
-        ttlSeconds:
-          type: integer
-          format: int32
-          minimum: 60
-          maximum: 86400
-          description: Requested lease duration in seconds (60-86400)
-
-    RevokeDynamicLeaseRequest:
-      type: object
-      required: [leaseId]
-      properties:
-        leaseId:
-          type: string
-          description: The lease identifier to revoke
-
     SealActionRequest:
       type: object
       required: [action]
@@ -2309,14 +2305,14 @@ components:
         action:
           type: string
           pattern: "^(seal|unseal)$"
-          description: '"seal" or "unseal"'
+          description: "\"seal\" or \"unseal\""
         keyShare:
           type: string
-          description: For unseal - one of the Shamir key shares
+          description: For unseal — one of the Shamir key shares
 
     AuditQueryRequest:
       type: object
-      description: Query parameters for searching the audit log (all optional)
+      description: Query parameters for searching the audit log. All fields optional.
       properties:
         userId:
           type: string
@@ -2339,7 +2335,17 @@ components:
           type: string
           format: date-time
 
-    # ── Response DTOs ─────────────────────────────────────────────
+    # ═══════════════════════════════════════════════════════════════
+    # RESPONSE SCHEMAS
+    # ═══════════════════════════════════════════════════════════════
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        timestamp:
+          type: string
+
     SecretResponse:
       type: object
       properties:
@@ -2356,7 +2362,7 @@ components:
         description:
           type: string
         secretType:
-          $ref: "#/components/schemas/SecretType"
+          $ref: '#/components/schemas/SecretType'
         currentVersion:
           type: integer
           format: int32
@@ -2408,7 +2414,6 @@ components:
           format: int32
         value:
           type: string
-          description: The decrypted secret value
         createdAt:
           type: string
           format: date-time
@@ -2456,7 +2461,7 @@ components:
         permissions:
           type: array
           items:
-            $ref: "#/components/schemas/PolicyPermission"
+            $ref: '#/components/schemas/PolicyPermission'
         isDenyPolicy:
           type: boolean
         isActive:
@@ -2486,7 +2491,7 @@ components:
         policyName:
           type: string
         bindingType:
-          $ref: "#/components/schemas/BindingType"
+          $ref: '#/components/schemas/BindingType'
         bindingTargetId:
           type: string
           format: uuid
@@ -2496,6 +2501,19 @@ components:
         createdAt:
           type: string
           format: date-time
+
+    AccessDecision:
+      type: object
+      properties:
+        allowed:
+          type: boolean
+        reason:
+          type: string
+        decidingPolicyId:
+          type: string
+          format: uuid
+        decidingPolicyName:
+          type: string
 
     RotationPolicyResponse:
       type: object
@@ -2509,7 +2527,7 @@ components:
         secretPath:
           type: string
         strategy:
-          $ref: "#/components/schemas/RotationStrategy"
+          $ref: '#/components/schemas/RotationStrategy'
         rotationIntervalHours:
           type: integer
           format: int32
@@ -2553,14 +2571,13 @@ components:
         secretPath:
           type: string
         strategy:
-          $ref: "#/components/schemas/RotationStrategy"
+          $ref: '#/components/schemas/RotationStrategy'
         previousVersion:
           type: integer
           format: int32
         newVersion:
           type: integer
           format: int32
-          description: Null on failure
         success:
           type: boolean
         errorMessage:
@@ -2571,7 +2588,42 @@ components:
         triggeredByUserId:
           type: string
           format: uuid
-          description: Null if automatic
+        createdAt:
+          type: string
+          format: date-time
+
+    DynamicLeaseResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        leaseId:
+          type: string
+        secretId:
+          type: string
+          format: uuid
+        secretPath:
+          type: string
+        backendType:
+          type: string
+        status:
+          $ref: '#/components/schemas/LeaseStatus'
+        ttlSeconds:
+          type: integer
+          format: int32
+        expiresAt:
+          type: string
+          format: date-time
+        revokedAt:
+          type: string
+          format: date-time
+        requestedByUserId:
+          type: string
+          format: uuid
+        connectionDetails:
+          type: object
+          additionalProperties: {}
         createdAt:
           type: string
           format: date-time
@@ -2632,49 +2684,11 @@ components:
         plaintext:
           type: string
 
-    DynamicLeaseResponse:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        leaseId:
-          type: string
-        secretId:
-          type: string
-          format: uuid
-        secretPath:
-          type: string
-        backendType:
-          type: string
-          description: 'Backend type (e.g., "postgresql")'
-        status:
-          $ref: "#/components/schemas/LeaseStatus"
-        ttlSeconds:
-          type: integer
-          format: int32
-        expiresAt:
-          type: string
-          format: date-time
-        revokedAt:
-          type: string
-          format: date-time
-        requestedByUserId:
-          type: string
-          format: uuid
-        connectionDetails:
-          type: object
-          additionalProperties: true
-          description: Connection details (only included on creation)
-        createdAt:
-          type: string
-          format: date-time
-
     SealStatusResponse:
       type: object
       properties:
         status:
-          $ref: "#/components/schemas/SealStatus"
+          $ref: '#/components/schemas/SealStatus'
         totalShares:
           type: integer
           format: int32
@@ -2726,35 +2740,16 @@ components:
           type: string
           format: date-time
 
-    AccessDecision:
-      type: object
-      properties:
-        allowed:
-          type: boolean
-        reason:
-          type: string
-        decidingPolicyId:
-          type: string
-          format: uuid
-        decidingPolicyName:
-          type: string
-
-    ErrorResponse:
-      type: object
-      properties:
-        message:
-          type: string
-        timestamp:
-          type: string
-
-    # ── Paginated Response Wrappers ──────────────────────────────
+    # ═══════════════════════════════════════════════════════════════
+    # PAGE RESPONSE VARIANTS
+    # ═══════════════════════════════════════════════════════════════
     PageResponseSecretResponse:
       type: object
       properties:
         content:
           type: array
           items:
-            $ref: "#/components/schemas/SecretResponse"
+            $ref: '#/components/schemas/SecretResponse'
         page:
           type: integer
           format: int32
@@ -2776,7 +2771,7 @@ components:
         content:
           type: array
           items:
-            $ref: "#/components/schemas/SecretVersionResponse"
+            $ref: '#/components/schemas/SecretVersionResponse'
         page:
           type: integer
           format: int32
@@ -2798,7 +2793,7 @@ components:
         content:
           type: array
           items:
-            $ref: "#/components/schemas/AccessPolicyResponse"
+            $ref: '#/components/schemas/AccessPolicyResponse'
         page:
           type: integer
           format: int32
@@ -2820,29 +2815,7 @@ components:
         content:
           type: array
           items:
-            $ref: "#/components/schemas/RotationHistoryResponse"
-        page:
-          type: integer
-          format: int32
-        size:
-          type: integer
-          format: int32
-        totalElements:
-          type: integer
-          format: int64
-        totalPages:
-          type: integer
-          format: int32
-        isLast:
-          type: boolean
-
-    PageResponseTransitKeyResponse:
-      type: object
-      properties:
-        content:
-          type: array
-          items:
-            $ref: "#/components/schemas/TransitKeyResponse"
+            $ref: '#/components/schemas/RotationHistoryResponse'
         page:
           type: integer
           format: int32
@@ -2864,7 +2837,29 @@ components:
         content:
           type: array
           items:
-            $ref: "#/components/schemas/DynamicLeaseResponse"
+            $ref: '#/components/schemas/DynamicLeaseResponse'
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        isLast:
+          type: boolean
+
+    PageResponseTransitKeyResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransitKeyResponse'
         page:
           type: integer
           format: int32
@@ -2886,7 +2881,7 @@ components:
         content:
           type: array
           items:
-            $ref: "#/components/schemas/AuditEntryResponse"
+            $ref: '#/components/schemas/AuditEntryResponse'
         page:
           type: integer
           format: int32
